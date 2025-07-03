@@ -1,6 +1,6 @@
 from zeroconf import ServiceInfo, Zeroconf
 import socket
-from constants import SERVICE_TYPE, SERVICE_NAME, DEFAULT_PORT, DEVICE_NAME
+from src.constants import SERVICE_TYPE, SERVICE_NAME, DEFAULT_PORT, DEVICE_NAME
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

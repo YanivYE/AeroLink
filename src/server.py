@@ -1,6 +1,6 @@
 import socket
 import threading
-from constants import DEFAULT_PORT
+from src.constants import DEFAULT_PORT
 
 def handle_client(client_socket, addr):
     print(f"[<] Connection from {addr}")

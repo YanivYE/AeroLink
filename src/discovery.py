@@ -1,6 +1,6 @@
 import socket
 from zeroconf import Zeroconf, ServiceBrowser
-from constants import SERVICE_TYPE
+from src.constants import SERVICE_TYPE
 
 discovered_devices = {}
 
