@@ -10,44 +10,89 @@ class DeviceDiscoveryScreen(ttk.Frame):
     def __init__(self, app):
         super().__init__(app)
         self.app = app
-        self.device_frames = {}
+        self.loading = None
+        self.device_buttons = []
+        self.selected_device_name = None
+        self.selected_ip = None
+        self.selected_port = None
 
-        ttk.Label(self, text="📡 Discovering Devices...", font=("Segoe UI", 16, "bold")).pack(pady=10)
-        self.container = ttk.Frame(self)
-        self.container.pack(fill="both", expand=True, padx=20)
+        self._build_ui()
+        self._start_discovery()
 
-        self.loading = ttk.Progressbar(self, mode="indeterminate", bootstyle="info")
-        self.loading.pack(pady=(5, 10))
-        self.loading.start()
+    def _build_ui(self):
+        from src.gui.screens.select_mode import ModeSelectionScreen
 
-        ttk.Button(self, text="⬅ Back", bootstyle=SECONDARY, command=lambda: app._navigate_to(app.__class__)).place(x=20, y=560)
+        ttk.Label(self, text="🔎 Scanning for AeroLink Devices...", font=("Segoe UI", 14)).pack(pady=15)
 
+        # Loading bar container - centered with fixed width
+        loading_frame = ttk.Frame(self)
+        loading_frame.pack(side="bottom", pady=15)
+        self.loading = ttk.Progressbar(loading_frame, mode="indeterminate", length=400)
+        self.loading.pack()
+        self.loading.start()  # infinite animation
+
+        # Devices container with border
+        self.device_box = ttk.Frame(self, bootstyle="secondary", borderwidth=2, relief="groove")
+        self.device_box.pack(padx=40, pady=10, fill="both", expand=False)
+
+        self.device_listbox = tk.Listbox(
+            self.device_box, height=8, font=("Segoe UI", 12),
+            activestyle="none", selectbackground="#198754", selectforeground="white",
+            highlightthickness=0, bd=0
+        )
+        self.device_listbox.pack(fill="both", expand=True, padx=10, pady=10)
+        self.device_listbox.bind("<<ListboxSelect>>", self._on_device_select)
+
+        # Select button below device list
+        self.select_button = ttk.Button(self, text="Select", bootstyle=SUCCESS, width=20, command=self._confirm_selection)
+        self.select_button.pack(pady=(5, 15))
+        self.select_button["state"] = "disabled"  # Disabled until device selected
+
+        # Back button bottom-left
+        ttk.Button(self, text="⬅ Back", bootstyle="secondary", command=lambda: self.app._navigate_to(ModeSelectionScreen)).pack(side="bottom", anchor="w", padx=20, pady=5)
+
+    def _start_discovery(self):
         threading.Thread(target=self._discover_devices, daemon=True).start()
 
     def _discover_devices(self):
-        start_discovery(timeout=6, on_device_discovered=self._add_device)
-
-        self.app.after(0, self._stop_loading)
-
-    def _stop_loading(self):
-        if hasattr(self, "loading") and self.loading.winfo_exists():
-            self.loading.stop()
-            self.loading.pack_forget()
+        # Use your discovery logic; call self._add_device immediately when discovered
+        start_discovery(timeout=None, on_device_discovered=self._add_device)
 
     def _add_device(self, device_name, ip, port):
-        if device_name in self.device_frames:
-            return
+        # Add device to the listbox immediately
+        self.after(0, lambda: self._add_device_ui(device_name, ip, port))
 
-        frame = ttk.Frame(self.container, bootstyle="dark")
-        frame.pack(fill="x", pady=8, padx=10, ipady=8)
+    def _add_device_ui(self, device_name, ip, port):
+        display_text = f"{device_name} - {ip}:{port}"
 
-        ttk.Label(frame, text="🖥️", font=("Segoe UI Emoji", 14)).pack(side="left", padx=10)
-        ttk.Label(frame, text=device_name, font=("Segoe UI", 12, "bold")).pack(side="left", expand=True)
+        # Prevent duplicates
+        existing = self.device_listbox.get(0, tk.END)
+        if display_text not in existing:
+            self.device_listbox.insert(tk.END, display_text)
+            # Save device info
+            discovered_devices[display_text] = (ip, port)
 
-        ttk.Button(frame, text="Select", width=10, bootstyle=SUCCESS, command=lambda: self._select_device(device_name)).pack(side="right", padx=10)
+    def _on_device_select(self, event):
+        sel = self.device_listbox.curselection()
+        if sel:
+            index = sel[0]
+            device_name = self.device_listbox.get(index)
+            self.selected_device_name = device_name
+            self.selected_ip, self.selected_port = discovered_devices[device_name]
+            self.select_button["state"] = "normal"  # Enable button
+        else:
+            self.selected_device_name = None
+            self.selected_ip = None
+            self.selected_port = None
+            self.select_button["state"] = "disabled"
 
-        self.device_frames[device_name] = frame
+    def _confirm_selection(self):
+        if self.selected_device_name:
+            # Stop loading bar
+            if self.loading and self.loading.winfo_exists():
+                self.loading.stop()
+                self.loading.pack_forget()
 
-    def _select_device(self, device_name):
-        self.app.selected_device = device_name
-        self.app._navigate_to(FileTransferScreen)
+            # Save selection on app and navigate forward
+            self.app.selected_device = (self.selected_device_name, self.selected_ip, self.selected_port)
+            self.app._navigate_to(FileTransferScreen)

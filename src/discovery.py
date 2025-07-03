@@ -12,7 +12,8 @@ class Listener:
     def add_service(self, zeroconf, type, name):
         info = zeroconf.get_service_info(type, name)
         if info:
-            ip = ".".join(map(str, info.addresses[0]))
+            # Correct way to parse IPv4 address from bytes
+            ip = socket.inet_ntoa(info.addresses[0])
             port = info.port
             device = info.properties.get(b'device', b'').decode()
 
@@ -30,10 +31,19 @@ class Listener:
     def update_service(self, zeroconf, type, name):
         pass  # Not used
 
-def start_discovery(timeout=5, on_device_discovered=None):
+def start_discovery(timeout, on_device_discovered=None):
     zeroconf = Zeroconf()
     listener = Listener(on_device_discovered=on_device_discovered)
     browser = ServiceBrowser(zeroconf, SERVICE_TYPE, listener)
 
-    time.sleep(timeout)
-    zeroconf.close()
+    try:
+        if timeout is None:
+            # Run indefinitely until externally stopped (caller must close zeroconf)
+            while True:
+                time.sleep(1)
+        else:
+            time.sleep(timeout)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        zeroconf.close()

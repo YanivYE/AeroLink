@@ -6,8 +6,6 @@ import socket
 import tkinter as tk
 from ttkbootstrap.constants import *
 
-from src.discovery import discovered_devices
-
 class FileTransferScreen(ttk.Frame):
     def __init__(self, app):
         from src.gui.screens.select_mode import ModeSelectionScreen
@@ -56,8 +54,12 @@ class FileTransferScreen(ttk.Frame):
             self.app._show_toast("Invalid file path", "danger")
             return
 
-        device_name = self.app.selected_device
-        ip, port = discovered_devices[device_name]
+        if not self.app.selected_device:
+            self.app._show_toast("No device selected", "danger")
+            return
+
+        # selected_device should be a tuple: (device_name, ip, port)
+        device_name, ip, port = self.app.selected_device
 
         try:
             with open(path, "rb") as f:
