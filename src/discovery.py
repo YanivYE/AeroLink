@@ -17,7 +17,7 @@ class DeviceDiscoveryListener:
                 return  # Skip self
 
             print(f"[>] Found: {device_name} at {ip}:{port}")
-            discovered_devices[name] = (ip, port)
+            discovered_devices[name] = (device_name, ip, port)
 
     def remove_service(self, zeroconf, type, name):
         if name in discovered_devices:
