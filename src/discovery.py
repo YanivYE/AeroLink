@@ -1,42 +1,39 @@
-import socket
 from zeroconf import Zeroconf, ServiceBrowser
-from src.constants import SERVICE_TYPE
+import socket
+import time
 
+SERVICE_TYPE = "_aerolink._tcp.local."
 discovered_devices = {}
 
-class DeviceDiscoveryListener:
+class Listener:
+    def __init__(self, on_device_discovered=None):
+        self.on_device_discovered = on_device_discovered
+
     def add_service(self, zeroconf, type, name):
         info = zeroconf.get_service_info(type, name)
         if info:
             ip = ".".join(map(str, info.addresses[0]))
             port = info.port
-            device_name = info.properties.get(b'device', b'').decode()
+            device = info.properties.get(b'device', b'').decode()
 
             local_ip = socket.gethostbyname(socket.gethostname())
             if ip == local_ip:
                 return  # Skip self
 
-            print(f"[>] Found: {device_name} at {ip}:{port}")
-            discovered_devices[name] = (device_name, ip, port)
+            discovered_devices[device] = (ip, port)
+            if self.on_device_discovered:
+                self.on_device_discovered(device, ip, port)
 
     def remove_service(self, zeroconf, type, name):
-        if name in discovered_devices:
-            print(f"[x] Device went offline: {name}")
-            discovered_devices.pop(name)
+        pass  # Optional cleanup
 
     def update_service(self, zeroconf, type, name):
-        pass  # Required by Zeroconf
+        pass  # Not used
 
-def start_discovery(timeout=10):
+def start_discovery(timeout=5, on_device_discovered=None):
     zeroconf = Zeroconf()
-    listener = DeviceDiscoveryListener()
+    listener = Listener(on_device_discovered=on_device_discovered)
     browser = ServiceBrowser(zeroconf, SERVICE_TYPE, listener)
 
-    print(f"[~] Browsing for {timeout} seconds...")
-    try:
-        import time
-        time.sleep(timeout)
-    finally:
-        zeroconf.close()
-
-    return discovered_devices
+    time.sleep(timeout)
+    zeroconf.close()

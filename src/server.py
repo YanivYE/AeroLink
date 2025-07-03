@@ -11,6 +11,7 @@ def handle_client(client_socket, addr):
 def start_tcp_server(port=DEFAULT_PORT):
     def _server_loop():
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow reuse of the port
         server.bind(('', port))
         server.listen(5)
         print(f"[+] TCP server listening on port {port}")
