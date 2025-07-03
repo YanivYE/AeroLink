@@ -32,6 +32,8 @@ class Listener:
         pass  # Not used
 
 def start_discovery(timeout, on_device_discovered=None):
+    discovered_devices.clear()
+
     zeroconf = Zeroconf()
     listener = Listener(on_device_discovered=on_device_discovered)
     browser = ServiceBrowser(zeroconf, SERVICE_TYPE, listener)

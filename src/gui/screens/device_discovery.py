@@ -15,6 +15,7 @@ class DeviceDiscoveryScreen(ttk.Frame):
         self.selected_device_name = None
         self.selected_ip = None
         self.selected_port = None
+        self.discovery_active = True  # flag to safely stop discovery if UI destroyed
 
         self._build_ui()
         self._start_discovery()
@@ -29,7 +30,7 @@ class DeviceDiscoveryScreen(ttk.Frame):
         loading_frame.pack(side="bottom", pady=15)
         self.loading = ttk.Progressbar(loading_frame, mode="indeterminate", length=400)
         self.loading.pack()
-        self.loading.start()  # infinite animation
+        self.loading.start()
 
         # Devices container with border
         self.device_box = ttk.Frame(self, bootstyle="secondary", borderwidth=2, relief="groove")
@@ -43,33 +44,36 @@ class DeviceDiscoveryScreen(ttk.Frame):
         self.device_listbox.pack(fill="both", expand=True, padx=10, pady=10)
         self.device_listbox.bind("<<ListboxSelect>>", self._on_device_select)
 
-        # Select button below device list
         self.select_button = ttk.Button(self, text="Select", bootstyle=SUCCESS, width=20, command=self._confirm_selection)
         self.select_button.pack(pady=(5, 15))
-        self.select_button["state"] = "disabled"  # Disabled until device selected
+        self.select_button["state"] = "disabled"
 
-        # Back button bottom-left
-        ttk.Button(self, text="⬅ Back", bootstyle="secondary", command=lambda: self.app._navigate_to(ModeSelectionScreen)).pack(side="bottom", anchor="w", padx=20, pady=5)
+        # Back button
+        ttk.Button(self, text="⬅ Back", bootstyle="secondary", command=lambda: self._go_back(ModeSelectionScreen)).pack(side="bottom", anchor="w", padx=20, pady=5)
 
     def _start_discovery(self):
+        # Clear previously discovered devices to avoid duplicates
+        discovered_devices.clear()
         threading.Thread(target=self._discover_devices, daemon=True).start()
 
     def _discover_devices(self):
-        # Use your discovery logic; call self._add_device immediately when discovered
+        # Continuous discovery
         start_discovery(timeout=None, on_device_discovered=self._add_device)
 
     def _add_device(self, device_name, ip, port):
-        # Add device to the listbox immediately
+        if not self.discovery_active:
+            return
         self.after(0, lambda: self._add_device_ui(device_name, ip, port))
 
     def _add_device_ui(self, device_name, ip, port):
-        display_text = f"{device_name} - {ip}:{port}"
+        if not self.device_listbox.winfo_exists():
+            return
 
-        # Prevent duplicates
+        display_text = f"{device_name} - {ip}:{port}"
         existing = self.device_listbox.get(0, tk.END)
+
         if display_text not in existing:
             self.device_listbox.insert(tk.END, display_text)
-            # Save device info
             discovered_devices[display_text] = (ip, port)
 
     def _on_device_select(self, event):
@@ -79,7 +83,7 @@ class DeviceDiscoveryScreen(ttk.Frame):
             device_name = self.device_listbox.get(index)
             self.selected_device_name = device_name
             self.selected_ip, self.selected_port = discovered_devices[device_name]
-            self.select_button["state"] = "normal"  # Enable button
+            self.select_button["state"] = "normal"
         else:
             self.selected_device_name = None
             self.selected_ip = None
@@ -88,11 +92,13 @@ class DeviceDiscoveryScreen(ttk.Frame):
 
     def _confirm_selection(self):
         if self.selected_device_name:
-            # Stop loading bar
+            self.discovery_active = False  # stop further updates
             if self.loading and self.loading.winfo_exists():
                 self.loading.stop()
                 self.loading.pack_forget()
-
-            # Save selection on app and navigate forward
             self.app.selected_device = (self.selected_device_name, self.selected_ip, self.selected_port)
             self.app._navigate_to(FileTransferScreen)
+
+    def _go_back(self, screen):
+        self.discovery_active = False
+        self.app._navigate_to(screen)
