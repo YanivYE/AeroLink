@@ -8,7 +8,7 @@ def load_logo(parent):
     try:
         image_path = os.path.join(ASSETS_PATH, "logo.png")
         image = Image.open(image_path)
-        image = image.resize((120, 120), Image.Resampling.LANCZOS)  # resize to 200x80 px
+        image = image.resize((140, 140), Image.Resampling.LANCZOS)  # resize to 200x80 px
         photo = ImageTk.PhotoImage(image)
         label = ttk.Label(parent, image=photo)
         label.image = photo  # keep a reference to prevent GC

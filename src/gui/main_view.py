@@ -2,7 +2,7 @@ import threading
 import tkinter as tk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from ttkbootstrap.scrolled import ScrolledText
+from tkinter.scrolledtext import ScrolledText
 
 from src.discovery import start_discovery, discovered_devices
 from src.communication import send_message
