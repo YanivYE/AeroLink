@@ -27,10 +27,18 @@ class PassiveModeScreen(Frame):
         Button(self, text="⬅ Back", width=25, bootstyle=SECONDARY,
                    command=lambda: self._go_back(ModeSelectionScreen)).pack(pady=5)
 
-        start_tcp_server()
+        start_tcp_server(on_message_received=self._display_message)
         self.zeroconf = start_advertising()
 
     def _go_back(self, screen):
         if self.zeroconf:
             self.zeroconf.close()
         self.app._navigate_to(screen)
+
+    def _display_message(self, msg):
+        # Called from a background thread, so we must schedule GUI updates safely
+        self.msg_log.after(0, lambda: self._append_to_log(msg))
+
+    def _append_to_log(self, msg):
+        self.msg_log.insert("end", msg + "\n")
+        self.msg_log.see("end")  # Scroll to the bottom

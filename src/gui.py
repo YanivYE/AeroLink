@@ -1,6 +1,6 @@
 import threading
 from discovery import start_discovery, discovered_devices
-from communication import send_message
+from communication import send_file
 from advertiser import start_advertising
 from server import start_tcp_server
 
@@ -73,7 +73,7 @@ class AeroLinkApp(ttk.Window):
         idx = sel[0]
         (_, (ip, port)) = list(discovered_devices.items())[idx]
         message = self.msg_entry.get()
-        send_message(ip, port, message)
+        send_file(ip, port, message)
         self.msg_entry.delete(0, END)
 
     def passive_mode(self):
