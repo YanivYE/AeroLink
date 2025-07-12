@@ -3,6 +3,8 @@ import threading
 from src.constants import DEFAULT_PORT
 import os
 
+CHUNK_SIZE = 65536
+
 def handle_client(client_socket, addr, on_file_received=None):
     sender_ip = addr[0]
 
@@ -28,7 +30,7 @@ def handle_client(client_socket, addr, on_file_received=None):
 
     with open(save_path, "wb") as f:
         while received_bytes < filesize:
-            chunk = client_socket.recv(min(4096, filesize - received_bytes))
+            chunk = client_socket.recv(min(CHUNK_SIZE, filesize - received_bytes))
             if not chunk:
                 break
             f.write(chunk)
