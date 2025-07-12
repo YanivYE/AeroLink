@@ -1,10 +1,11 @@
 import threading
 from discovery import start_discovery, discovered_devices
-from communication import send_message
+from communication import send_file
 from advertiser import start_advertising
 from server import start_tcp_server
 
 import tkinter as tk
+from tkinter.filedialog import askopenfilename
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.scrolled import ScrolledText
@@ -70,11 +71,17 @@ class AeroLinkApp(ttk.Window):
         sel = self.device_listbox.curselection()
         if not sel:
             return
+
         idx = sel[0]
         (_, (ip, port)) = list(discovered_devices.items())[idx]
-        message = self.msg_entry.get()
-        send_message(ip, port, message)
-        self.msg_entry.delete(0, END)
+
+        # Ask user to select a file
+        filepath = askopenfilename(title="Select a file to send")
+
+        if not filepath:
+            return  # User cancelled
+
+        send_file(ip, port, filepath)
 
     def passive_mode(self):
         self._clear()

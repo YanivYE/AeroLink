@@ -6,6 +6,8 @@ import socket
 import tkinter as tk
 from ttkbootstrap.constants import *
 
+from src.communication import send_file
+
 class FileTransferScreen(ttk.Frame):
     def __init__(self, app):
         from src.gui.screens.select_mode import ModeSelectionScreen
@@ -62,13 +64,7 @@ class FileTransferScreen(ttk.Frame):
         device_name, ip, port = self.app.selected_device
 
         try:
-            with open(path, "rb") as f:
-                data = f.read()
-            filename = os.path.basename(path).encode()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((ip, port))
-            sock.sendall(filename + b"\0" + data)
-            sock.close()
-            self.app._show_toast(f"Sent {filename.decode()} successfully", "success")
+            send_file(ip, port, path)
+            self.app._show_toast(f"Sent {os.path.basename(path)} successfully", "success")
         except Exception as e:
             self.app._show_toast(f"Send failed: {e}", "danger")
