@@ -1,9 +1,8 @@
 import socket
 import threading
-from src.constants import DEFAULT_PORT
+from src.constants import CHUNK_SIZE, DEFAULT_PORT
 import os
 
-CHUNK_SIZE = 65536
 
 def handle_client(client_socket, addr, on_file_received=None):
     sender_ip = addr[0]

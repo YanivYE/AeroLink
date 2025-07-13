@@ -2,7 +2,7 @@ import os
 import socket
 import time
 
-CHUNK_SIZE = 65536
+from constants import CHUNK_SIZE
 
 def send_file(ip, port, filepath):
     try:
