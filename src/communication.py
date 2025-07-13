@@ -2,9 +2,10 @@ import os
 import socket
 import time
 
-from constants import CHUNK_SIZE
+from src.constants import CHUNK_SIZE
 
 def send_file(ip, port, filepath):
+    sock = None
     try:
         filename = os.path.basename(filepath)
         filesize = os.path.getsize(filepath)
@@ -20,16 +21,27 @@ def send_file(ip, port, filepath):
 
         time.sleep(0.05)  # let header flush
 
-        # 2. Send file in chunks
+        # 2. Send file in chunks with throttled progress output
+        sent = 0
+        last_print = 0
         with open(filepath, "rb") as f:
-            sent = 0
-            while (chunk := f.read(CHUNK_SIZE)):
+            while True:
+                chunk = f.read(CHUNK_SIZE)
+                if not chunk:
+                    break
                 sock.sendall(chunk)
                 sent += len(chunk)
-                print(f"[DEBUG] Sent {sent}/{filesize} bytes", end="\r")
+                now = time.time()
+                if now - last_print > 0.5:
+                    print(f"[DEBUG] Sent {sent}/{filesize} bytes", end="\r")
+                    last_print = now
 
-        sock.close()
-        print(f"\n✅ File '{filename}' sent successfully to {ip}:{port}")
+        print()  # newline after progress
+        print(f"File '{filename}' sent successfully to {ip}:{port}")
 
     except Exception as e:
         print(f"[!] Failed to send file: {e}")
+
+    finally:
+        if sock:
+            sock.close()

@@ -1,33 +1,34 @@
 import socket
 import threading
-from src.constants import CHUNK_SIZE, DEFAULT_PORT
 import os
+from src.constants import CHUNK_SIZE, DEFAULT_PORT
 
-
-def handle_client(client_socket, addr, on_file_received=None):
-    sender_ip = addr[0]
-
-    # Read header first
+def read_header(client_socket):
+    """
+    Read header line ending with '\n' from the client socket.
+    Returns (filename, filesize) or raises Exception on failure.
+    """
     header = b""
     while not header.endswith(b"\n"):
         chunk = client_socket.recv(1)
         if not chunk:
-            break
+            raise ConnectionError("Client disconnected before sending header")
         header += chunk
 
-    try:
-        filename, filesize = header.decode().strip().split("|")
-        filesize = int(filesize)
-    except Exception as e:
-        print(f"[!] Failed to parse header: {header!r} — {e}")
-        client_socket.close()
-        return
+    filename, filesize_str = header.decode().strip().split("|")
+    filesize = int(filesize_str)
+    filename = os.path.basename(filename)  # sanitize filename
+    return filename, filesize
 
-    save_path = os.path.join("received", filename)
-    os.makedirs("received", exist_ok=True)
+def receive_file(client_socket, filepath, filesize):
+    """
+    Receive a file of given filesize from client_socket and save it to filepath.
+    Returns total bytes received.
+    """
     received_bytes = 0
+    os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
 
-    with open(save_path, "wb") as f:
+    with open(filepath, "wb") as f:
         while received_bytes < filesize:
             chunk = client_socket.recv(min(CHUNK_SIZE, filesize - received_bytes))
             if not chunk:
@@ -35,12 +36,29 @@ def handle_client(client_socket, addr, on_file_received=None):
             f.write(chunk)
             received_bytes += len(chunk)
 
-    print(f"[✓] File received: {filename} ({filesize} bytes) from {sender_ip}")
+    return received_bytes
 
-    if on_file_received:
-        on_file_received(filename, filesize, sender_ip)
+def handle_client(client_socket, addr, on_file_received=None):
+    sender_ip = addr[0]
+    try:
+        client_socket.settimeout(30)
+        filename, filesize = read_header(client_socket)
+        save_path = os.path.join("received", filename)
 
-    client_socket.close()
+        received_bytes = receive_file(client_socket, save_path, filesize)
+
+        if received_bytes < filesize:
+            print(f"[!] Warning: Incomplete file transfer for {filename} from {sender_ip}")
+        else:
+            print(f"[✓] File received: {filename} ({filesize} bytes) from {sender_ip}")
+            if on_file_received:
+                on_file_received(filename, filesize, sender_ip)
+
+    except Exception as e:
+        print(f"[!] Error handling client {sender_ip}: {e}")
+
+    finally:
+        client_socket.close()
 
 def start_tcp_server(port=DEFAULT_PORT, on_file_received=None):
     def _server_loop():
@@ -52,6 +70,10 @@ def start_tcp_server(port=DEFAULT_PORT, on_file_received=None):
 
         while True:
             client_socket, addr = server.accept()
-            threading.Thread(target=handle_client, args=(client_socket, addr, on_file_received), daemon=True).start()
+            threading.Thread(
+                target=handle_client,
+                args=(client_socket, addr, on_file_received),
+                daemon=True
+            ).start()
 
     threading.Thread(target=_server_loop, daemon=True).start()
