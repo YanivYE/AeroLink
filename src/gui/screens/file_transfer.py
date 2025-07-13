@@ -1,32 +1,50 @@
-import ttkbootstrap as ttk
-from tkinter import filedialog
-from tkinterdnd2 import DND_FILES
 import os
 import socket
 import tkinter as tk
+import ttkbootstrap as ttk
+from tkinter import filedialog
+from tkinterdnd2 import DND_FILES
 from ttkbootstrap.constants import *
 
 from src.communication import send_file
 
 class FileTransferScreen(ttk.Frame):
     def __init__(self, app):
-        from src.gui.screens.select_mode import ModeSelectionScreen
-
         super().__init__(app)
         self.app = app
         self.file_path = tk.StringVar()
 
-        ttk.Label(self, text="📁 Send a File", font=("Segoe UI", 16, "bold")).pack(pady=(20, 10))
+        self._build_ui()
 
+    def _build_ui(self):
+        ttk.Label(
+            self,
+            text="Send a File",
+            font=("Segoe UI", 16, "bold")
+        ).pack(pady=(20, 10))
+
+        # File selector row
         file_frame = ttk.Frame(self)
         file_frame.pack(pady=(0, 10))
 
-        ttk.Entry(file_frame, textvariable=self.file_path, width=45, state="readonly").pack(side="left", padx=(0, 10))
-        ttk.Button(file_frame, text="Browse", bootstyle=INFO, command=self._choose_file).pack(side="left")
+        ttk.Entry(
+            file_frame,
+            textvariable=self.file_path,
+            width=45,
+            state="readonly"
+        ).pack(side="left", padx=(0, 10))
 
+        ttk.Button(
+            file_frame,
+            text="Browse",
+            bootstyle=INFO,
+            command=self._choose_file
+        ).pack(side="left")
+
+        # Drag-and-drop area
         drop_box = ttk.Label(
             self,
-            text="⬇️ Drop file here",
+            text="Drop file here",
             relief="ridge",
             borderwidth=2,
             width=60,
@@ -38,21 +56,47 @@ class FileTransferScreen(ttk.Frame):
         drop_box.drop_target_register(DND_FILES)
         drop_box.dnd_bind('<<Drop>>', self._on_file_drop)
 
-        ttk.Button(self, text="📤 Send File", width=25, bootstyle=SUCCESS, command=self._send_file).pack(pady=(5, 10))
-        ttk.Button(self, text="⬅ Back", width=25, bootstyle=SECONDARY, command=lambda: app._navigate_to(ModeSelectionScreen)).pack()
+        # Action buttons
+        ttk.Button(
+            self,
+            text="Send File",
+            width=25,
+            bootstyle=SUCCESS,
+            command=self._send_file
+        ).pack(pady=(5, 10))
+
+        ttk.Button(
+            self,
+            text="⬅ Back",
+            width=25,
+            bootstyle=SECONDARY,
+            command=self._go_back
+        ).pack()
+
 
     def _choose_file(self):
         path = filedialog.askopenfilename()
-        if path:
-            self.file_path.set(path if len(path) < 60 else "..." + path[-57:])
+        self._set_display_path(path)
 
     def _on_file_drop(self, event):
-        path = event.data.strip("{}")
-        self.file_path.set(path if len(path) < 60 else "..." + path[-57:])
+        # Handle dropped file paths with braces or spaces
+        raw_path = event.data.strip("{}")
+        self._set_display_path(raw_path)
+
+    def _set_display_path(self, path):
+        if path and os.path.exists(path):
+            # Truncate for display if needed
+            display_path = path if len(path) < 60 else f"...{path[-57:]}"
+            self.file_path.set(display_path)
+            self._full_path = path
+        else:
+            self.file_path.set("")
+            self._full_path = None
 
     def _send_file(self):
-        path = self.file_path.get()
-        if not path or not os.path.exists(path):
+        path = getattr(self, "_full_path", None)
+
+        if not path or not os.path.isfile(path):
             self.app._show_toast("Invalid file path", "danger")
             return
 
@@ -60,7 +104,6 @@ class FileTransferScreen(ttk.Frame):
             self.app._show_toast("No device selected", "danger")
             return
 
-        # selected_device should be a tuple: (device_name, ip, port)
         device_name, ip, port = self.app.selected_device
 
         try:
@@ -68,3 +111,8 @@ class FileTransferScreen(ttk.Frame):
             self.app._show_toast(f"Sent {os.path.basename(path)} successfully", "success")
         except Exception as e:
             self.app._show_toast(f"Send failed: {e}", "danger")
+
+    def _go_back(self):
+        from src.gui.screens.select_mode import ModeSelectionScreen
+        self.app._navigate_to(ModeSelectionScreen)
+
