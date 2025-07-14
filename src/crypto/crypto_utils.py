@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 import os
 
-def load_key(path="aes.key"):
+def load_key(path="src/crypto/aes.key"):
     if not os.path.exists(path):
         raise FileNotFoundError(f"[!] AES key file not found: {path}")
     with open(path, "rb") as f:

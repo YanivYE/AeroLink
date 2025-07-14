@@ -65,6 +65,9 @@ class FileTransferScreen(ttk.Frame):
             command=self._send_file
         ).pack(pady=(5, 10))
 
+        self.status_label = ttk.Label(self, text="", font=("Segoe UI", 10))
+        self.status_label.pack(pady=(5, 10))
+
         ttk.Button(
             self,
             text="⬅ Back",
@@ -97,22 +100,33 @@ class FileTransferScreen(ttk.Frame):
         path = getattr(self, "_full_path", None)
 
         if not path or not os.path.isfile(path):
-            self.app._show_toast("Invalid file path", "danger")
+            self._set_status("Invalid file path", "danger")
             return
 
         if not self.app.selected_device:
-            self.app._show_toast("No device selected", "danger")
+            self._set_status("No device selected", "danger")
             return
 
         device_name, ip, port = self.app.selected_device
 
         try:
             send_file(ip, port, path)
-            self.app._show_toast(f"Sent {os.path.basename(path)} successfully", "success")
+            self._set_status(f"Sent {os.path.basename(path)} successfully", "success")
+
         except Exception as e:
-            self.app._show_toast(f"Send failed: {e}", "danger")
+            self._set_status(f"Send failed: {e}", "danger")
 
     def _go_back(self):
         from src.gui.screens.select_mode import ModeSelectionScreen
         self.app._navigate_to(ModeSelectionScreen)
 
+    def _set_status(self, message, level="info", duration=3000):
+        colors = {
+            "success": "green",
+            "danger": "red",
+            "info": "blue",
+        }
+        color = colors.get(level, "black")
+        self.status_label.configure(text=message, foreground=color)
+
+        self.after(duration, lambda: self.status_label.configure(text=""))

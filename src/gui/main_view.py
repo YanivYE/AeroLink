@@ -48,18 +48,6 @@ class AeroLinkApp(TkinterDnD.Tk):
         if self.toast_label.winfo_exists():
             self.toast_label.place(x=10, y=570, width=680)
 
-    def _show_toast(self, message, style="info"):
-        """
-        Display a temporary message at the bottom of the window.
-        """
-        self.toast_label.configure(text=message, bootstyle=style)
-        self.toast_label.place(x=10, y=570, width=680)
-        self.after(4000, self._clear_toast)
-
-    def _clear_toast(self):
-        self.toast_label.configure(text="")
-        self.toast_label.place_forget()
-
     def _navigate_to_mode_selection(self):
         """
         Lazy import ModeSelectionScreen to avoid circular imports,
