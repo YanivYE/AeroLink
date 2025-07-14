@@ -2,12 +2,10 @@ import socket
 import threading
 import os
 from src.constants import CHUNK_SIZE, DEFAULT_PORT
+from src.crypto.crypto_utils import create_cipher, decrypt_chunk, finalize_decryption
+from cryptography.hazmat.primitives import padding
 
 def read_header(client_socket):
-    """
-    Read header line ending with '\n' from the client socket.
-    Returns (filename, filesize) or raises Exception on failure.
-    """
     header = b""
     while not header.endswith(b"\n"):
         chunk = client_socket.recv(1)
@@ -17,24 +15,31 @@ def read_header(client_socket):
 
     filename, filesize_str = header.decode().strip().split("|")
     filesize = int(filesize_str)
-    filename = os.path.basename(filename)  # sanitize filename
+    filename = os.path.basename(filename)
     return filename, filesize
 
 def receive_file(client_socket, filepath, filesize):
-    """
-    Receive a file of given filesize from client_socket and save it to filepath.
-    Returns total bytes received.
-    """
     received_bytes = 0
     os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
 
+    # Receive IV first (16 bytes)
+    iv = client_socket.recv(16)
+    cipher = create_cipher(iv)
+    decryptor = cipher.decryptor()
+    unpadder = padding.PKCS7(128).unpadder()
+
     with open(filepath, "wb") as f:
-        while received_bytes < filesize:
-            chunk = client_socket.recv(min(CHUNK_SIZE, filesize - received_bytes))
+        while True:
+            chunk = client_socket.recv(CHUNK_SIZE)
             if not chunk:
                 break
-            f.write(chunk)
-            received_bytes += len(chunk)
+            decrypted = decrypt_chunk(chunk, decryptor, unpadder)
+            f.write(decrypted)
+            received_bytes += len(chunk)  # We track encrypted size for debug
+
+        # Finalize decryption
+        final = finalize_decryption(decryptor, unpadder)
+        f.write(final)
 
     return received_bytes
 
@@ -47,12 +52,9 @@ def handle_client(client_socket, addr, on_file_received=None):
 
         received_bytes = receive_file(client_socket, save_path, filesize)
 
-        if received_bytes < filesize:
-            print(f"[!] Warning: Incomplete file transfer for {filename} from {sender_ip}")
-        else:
-            print(f"[✓] File received: {filename} ({filesize} bytes) from {sender_ip}")
-            if on_file_received:
-                on_file_received(filename, filesize, sender_ip)
+        print(f"[✓] File received and decrypted: {filename} from {sender_ip}")
+        if on_file_received:
+            on_file_received(filename, filesize, sender_ip)
 
     except Exception as e:
         print(f"[!] Error handling client {sender_ip}: {e}")
@@ -77,3 +79,4 @@ def start_tcp_server(port=DEFAULT_PORT, on_file_received=None):
             ).start()
 
     threading.Thread(target=_server_loop, daemon=True).start()
+

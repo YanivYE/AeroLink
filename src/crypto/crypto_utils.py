@@ -1,6 +1,6 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
-from cryptography import default_backend
+from cryptography.hazmat.backends import default_backend
 import secrets
 
 # 32 bytes = 256-bit AES key (shared secret key)
