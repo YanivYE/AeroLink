@@ -1,6 +1,9 @@
 # received fiels dir
 received/
 
+# AES key file
+aes.key
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

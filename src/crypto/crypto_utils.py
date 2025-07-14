@@ -1,10 +1,18 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
-import secrets
+import os
 
-# 32 bytes = 256-bit AES key (shared secret key)
-AES_KEY = secrets.token_bytes(32).hex()
+def load_key(path="aes.key"):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"[!] AES key file not found: {path}")
+    with open(path, "rb") as f:
+        key = f.read()
+    if len(key) != 32:
+        raise ValueError("[!] AES key must be 32 bytes long")
+    return key
+
+AES_KEY = load_key()  # 32 bytes = 256-bit AES key (shared secret key)
 
 def encrypt_chunk(chunk, cipher, encryptor, padder):
     padded_data = padder.update(chunk)
