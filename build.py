@@ -21,8 +21,8 @@ cmd = [
     '--noconfirm',
     '--clean',
     '--onefile',
-    '--add-data', 
-    'src\\gui\\assets\\logo.png;.',
+    '--add-data', 'src\\gui\\assets\\logo.png;.',            # Logo
+    '--add-data', 'src\\crypto\\aes.key;crypto',         # AES key (preserve subpath)
     'run_gui.py'
 ]
 

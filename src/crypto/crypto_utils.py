@@ -3,13 +3,27 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 import os
 
-def load_key(path="src/crypto/aes.key"):
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"[!] AES key file not found: {path}")
-    with open(path, "rb") as f:
+import os
+import sys
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Running as compiled .exe
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+def load_key():
+    key_path = resource_path("crypto/aes.key")
+    if not os.path.exists(key_path):
+        raise FileNotFoundError(f"AES key file not found at: {key_path}")
+    with open(key_path, "rb") as f:
         key = f.read()
     if len(key) != 32:
-        raise ValueError("[!] AES key must be 32 bytes long")
+        raise ValueError("AES key must be exactly 32 bytes long")
     return key
 
 AES_KEY = load_key()  # 32 bytes = 256-bit AES key (shared secret key)
