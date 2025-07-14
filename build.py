@@ -17,7 +17,7 @@ for file in ['run_gui.spec', os.path.join('dist', 'run_gui.exe')]:
 print("[INFO] Building with PyInstaller...")
 
 cmd = [
-    'pyinstaller',
+    'python', '-m', 'PyInstaller',
     '--noconfirm',
     '--clean',
     '--onefile',
